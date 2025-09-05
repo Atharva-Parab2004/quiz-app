@@ -1,4 +1,4 @@
-// DOM element selectors
+// ================= DOM element selectors =================
 const configContainer = document.querySelector(".config-container");
 const quizContainer = document.querySelector(".quiz-container");
 const answerOptions = quizContainer.querySelector(".answer-options");
@@ -7,7 +7,7 @@ const questionStatus = quizContainer.querySelector(".question-status");
 const timerDisplay = quizContainer.querySelector(".timer-duration");
 const resultContainer = document.querySelector(".result-container");
 
-// Quiz state variables
+// ================= Quiz state variables =================
 const QUIZ_TIME_LIMIT = 15;
 let currentTime = QUIZ_TIME_LIMIT;
 let timer = null;
@@ -21,19 +21,30 @@ let disableSelection = false;
 // Questions array (will be loaded from backend)
 let questions = [];
 
+// ================= Backend API URL =================
+// If running locally → use localhost
+// If deployed → use your Render URL
+const API_BASE_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : "https://quiz-app-4hsa.onrender.com";
+
 // ✅ Load questions from backend
 const loadQuestions = async () => {
   try {
-    const res = await fetch("http://localhost:5000/api/questions"); 
-    // ⬆️ Change to your Render backend URL after deploy
+    const res = await fetch(`${API_BASE_URL}/api/questions`);
+    if (!res.ok) throw new Error("Failed to fetch questions");
     questions = await res.json();
-    console.log("Questions loaded:", questions);
+    console.log("✅ Questions loaded:", questions);
   } catch (error) {
     console.error("❌ Failed to load questions:", error);
+    alert("Unable to load questions. Please try again later.");
   }
 };
 
-// Display the quiz result and hide the quiz container
+// ================= Quiz functions =================
+
+// Display the quiz result
 const showQuizResult = () => {
   clearInterval(timer);
   document.querySelector(".quiz-popup").classList.remove("active");
@@ -42,14 +53,13 @@ const showQuizResult = () => {
   resultContainer.querySelector(".result-message").innerHTML = resultText;
 };
 
-// Clear and reset the timer
+// Reset and start timer
 const resetTimer = () => {
   clearInterval(timer);
   currentTime = QUIZ_TIME_LIMIT;
   timerDisplay.textContent = `${currentTime}s`;
 };
 
-// Initialize and start the timer for the current question
 const startTimer = () => {
   timer = setInterval(() => {
     currentTime--;
@@ -60,70 +70,83 @@ const startTimer = () => {
       nextQuestionBtn.style.visibility = "visible";
       quizContainer.querySelector(".quiz-timer").style.background = "#c31402";
       highlightCorrectAnswer();
-      // Disable all answer options after one option is selected
-      answerOptions.querySelectorAll(".answer-option").forEach((option) => (option.style.pointerEvents = "none"));
+      answerOptions
+        .querySelectorAll(".answer-option")
+        .forEach((option) => (option.style.pointerEvents = "none"));
     }
   }, 1000);
 };
 
-// Fetch a random question from the selected category
+// Pick a random question
 const getRandomQuestion = () => {
-  const categoryQuestions = questions.find(
-    (cat) => cat.category.toLowerCase() === quizCategory.toLowerCase()
-  )?.questions || [];
+  const categoryQuestions =
+    questions.find(
+      (cat) => cat.category.toLowerCase() === quizCategory.toLowerCase()
+    )?.questions || [];
 
-  // Show the results if all questions have been used
   if (questionsIndexHistory.length >= Math.min(numberOfQuestions, categoryQuestions.length)) {
     return showQuizResult();
   }
 
-  // Filter out already asked questions and choose a random one
-  const availableQuestions = categoryQuestions.filter((_, index) => !questionsIndexHistory.includes(index));
-  const randomQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+  const availableQuestions = categoryQuestions.filter(
+    (_, index) => !questionsIndexHistory.includes(index)
+  );
+  const randomQuestion =
+    availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
   questionsIndexHistory.push(categoryQuestions.indexOf(randomQuestion));
   return randomQuestion;
 };
 
-// Highlight the correct answer option and add icon
+// Highlight correct answer
 const highlightCorrectAnswer = () => {
-  const correctOption = answerOptions.querySelectorAll(".answer-option")[currentQuestion.correctAnswer];
+  const correctOption =
+    answerOptions.querySelectorAll(".answer-option")[currentQuestion.correctAnswer];
   correctOption.classList.add("correct");
-  const iconHTML = `<span class="material-symbols-rounded"> check_circle </span>`;
-  correctOption.insertAdjacentHTML("beforeend", iconHTML);
+  correctOption.insertAdjacentHTML(
+    "beforeend",
+    `<span class="material-symbols-rounded">check_circle</span>`
+  );
 };
 
-// Handle the user's answer selection
+// Handle user answer
 const handleAnswer = (option, answerIndex) => {
   if (disableSelection) return;
   clearInterval(timer);
   disableSelection = true;
+
   const isCorrect = currentQuestion.correctAnswer === answerIndex;
   option.classList.add(isCorrect ? "correct" : "incorrect");
-  !isCorrect ? highlightCorrectAnswer() : correctAnswersCount++;
-  // Insert icon based on correctness
-  const iconHTML = `<span class="material-symbols-rounded"> ${isCorrect ? "check_circle" : "cancel"} </span>`;
-  option.insertAdjacentHTML("beforeend", iconHTML);
-  // Disable all answer options after one option is selected
-  answerOptions.querySelectorAll(".answer-option").forEach((option) => (option.style.pointerEvents = "none"));
+  if (!isCorrect) highlightCorrectAnswer();
+  else correctAnswersCount++;
+
+  option.insertAdjacentHTML(
+    "beforeend",
+    `<span class="material-symbols-rounded">${isCorrect ? "check_circle" : "cancel"}</span>`
+  );
+
+  answerOptions
+    .querySelectorAll(".answer-option")
+    .forEach((option) => (option.style.pointerEvents = "none"));
+
   nextQuestionBtn.style.visibility = "visible";
 };
 
-// Render the current question and its options in the quiz
+// Render question
 const renderQuestion = () => {
   currentQuestion = getRandomQuestion();
   if (!currentQuestion) return;
+
   disableSelection = false;
   resetTimer();
   startTimer();
 
-  // Update the UI
   nextQuestionBtn.style.visibility = "hidden";
   quizContainer.querySelector(".quiz-timer").style.background = "#32313C";
-  quizContainer.querySelector(".question-text").textContent = currentQuestion.question;
+  quizContainer.querySelector(".question-text").textContent =
+    currentQuestion.question;
   questionStatus.innerHTML = `<b>${questionsIndexHistory.length}</b> of <b>${numberOfQuestions}</b> Questions`;
-  answerOptions.innerHTML = "";
 
-  // Create option <li> elements, append them, and add click event listeners
+  answerOptions.innerHTML = "";
   currentQuestion.options.forEach((option, index) => {
     const li = document.createElement("li");
     li.classList.add("answer-option");
@@ -133,16 +156,16 @@ const renderQuestion = () => {
   });
 };
 
-// Start the quiz and render the random question
+// Start quiz
 const startQuiz = async () => {
   document.querySelector(".config-popup").classList.remove("active");
   document.querySelector(".quiz-popup").classList.add("active");
 
-  // Update the quiz category and number of questions
   quizCategory = configContainer.querySelector(".category-option.active").textContent;
-  numberOfQuestions = parseInt(configContainer.querySelector(".question-option.active").textContent);
+  numberOfQuestions = parseInt(
+    configContainer.querySelector(".question-option.active").textContent
+  );
 
-  // ✅ Load questions before starting
   if (questions.length === 0) {
     await loadQuestions();
   }
@@ -150,15 +173,7 @@ const startQuiz = async () => {
   renderQuestion();
 };
 
-// Highlight the selected option on click - category or no. of question
-configContainer.querySelectorAll(".category-option, .question-option").forEach((option) => {
-  option.addEventListener("click", () => {
-    option.parentNode.querySelector(".active").classList.remove("active");
-    option.classList.add("active");
-  });
-});
-
-// Reset the quiz and return to the configuration container
+// Reset quiz
 const resetQuiz = () => {
   resetTimer();
   correctAnswersCount = 0;
@@ -167,7 +182,16 @@ const resetQuiz = () => {
   document.querySelector(".result-popup").classList.remove("active");
 };
 
-// Event listeners
+// ================= Event listeners =================
+configContainer
+  .querySelectorAll(".category-option, .question-option")
+  .forEach((option) => {
+    option.addEventListener("click", () => {
+      option.parentNode.querySelector(".active").classList.remove("active");
+      option.classList.add("active");
+    });
+  });
+
 nextQuestionBtn.addEventListener("click", renderQuestion);
 resultContainer.querySelector(".try-again-btn").addEventListener("click", resetQuiz);
 configContainer.querySelector(".start-quiz-btn").addEventListener("click", startQuiz);
