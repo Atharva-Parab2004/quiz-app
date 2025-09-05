@@ -6,7 +6,7 @@ const cors = require("cors");
 const app = express();
 
 // ✅ Direct MongoDB Atlas connection string
-const MONGO_URI = "mongodb+srv://parabatharva30_db_user:<db_password>@cluster0.w2gaczl.mongodb.net/quiz-app?retryWrites=true&w=majority&appName=Cluster0";
+const MONGO_URI = "mongodb+srv://parabatharva30_db_user:g5tUYOaP1jHZw9Cx@cluster0.w2gaczl.mongodb.net/quiz-app?retryWrites=true&w=majority&appName=Cluster0";
 
 // Middleware
 app.use(cors());
