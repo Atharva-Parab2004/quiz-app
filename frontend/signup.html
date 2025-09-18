@@ -3,23 +3,122 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign Up - Quiz App</title>
-  <!-- External CSS -->
-  <link rel="stylesheet" href="style.css">
+  <title>Sign Up</title>
+
+  <!-- Embedded CSS -->
+  <style>
+    /* Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Background */
+    body {
+      background: linear-gradient(135deg, #6A5ACD, #4A3AFF);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Container */
+    .container {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    /* Signup Box */
+    .signup-box {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+
+    .signup-box h2 {
+      margin-bottom: 20px;
+      font-size: 24px;
+      color: #333;
+    }
+
+    /* Input Fields */
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 14px;
+      transition: 0.3s;
+    }
+
+    .input-group input:focus {
+      border-color: #4A3AFF;
+      outline: none;
+      box-shadow: 0 0 5px rgba(74, 58, 255, 0.5);
+    }
+
+    /* Button */
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #4A3AFF;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn:hover {
+      background: #3729c6;
+    }
+
+    /* Login text */
+    .login-text {
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    .login-text a {
+      color: #4A3AFF;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .login-text a:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-  <div class="signup-container">
-    <h2>Sign Up</h2>
-    <form id="signupForm">
-      <input type="text" id="name" placeholder="Full Name" required>
-      <input type="email" id="email" placeholder="Enter Email" required>
-      <input type="password" id="password" placeholder="Create Password" required>
-      <button type="submit">Sign Up</button>
-    </form>
-    <p>Already have an account? <a href="login.html">Login</a></p>
+  <div class="container">
+    <div class="signup-box">
+      <h2>Sign Up</h2>
+      <form id="signupForm">
+        <div class="input-group">
+          <input type="text" id="name" placeholder="Full Name" required>
+        </div>
+        <div class="input-group">
+          <input type="email" id="email" placeholder="Enter Email" required>
+        </div>
+        <div class="input-group">
+          <input type="password" id="password" placeholder="Create Password" required>
+        </div>
+        <button type="submit" class="btn">Sign Up</button>
+      </form>
+      <p class="login-text">Already have an account? <a href="login.html">Login</a></p>
+    </div>
   </div>
 
-  <!-- Correct JS path -->
-  <script src="javascript/signup.js"></script>
+<script src="javascript/signup.js"></script>
 </body>
 </html>

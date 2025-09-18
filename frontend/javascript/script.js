@@ -1,197 +1,204 @@
-// ================= DOM element selectors =================
-const configContainer = document.querySelector(".config-container");
-const quizContainer = document.querySelector(".quiz-container");
-const answerOptions = quizContainer.querySelector(".answer-options");
-const nextQuestionBtn = quizContainer.querySelector(".next-question-btn");
-const questionStatus = quizContainer.querySelector(".question-status");
-const timerDisplay = quizContainer.querySelector(".timer-duration");
-const resultContainer = document.querySelector(".result-container");
+// frontend/javascript/script.js
+document.addEventListener("DOMContentLoaded", () => {
+  // ---------------- DOM element selectors (safe) ----------------
+  const configPopup = document.querySelector(".config-popup");
+  const configContainer = document.querySelector(".config-container");
+  const quizPopup = document.querySelector(".quiz-popup");
+  const quizContainer = document.querySelector(".quiz-container");
+  const answerOptions = quizContainer ? quizContainer.querySelector(".answer-options") : null;
+  const nextQuestionBtn = quizContainer ? quizContainer.querySelector(".next-question-btn") : null;
+  const questionStatus = quizContainer ? quizContainer.querySelector(".question-status") : null;
+  const timerDisplay = quizContainer ? quizContainer.querySelector(".timer-duration") : null;
+  const resultPopup = document.querySelector(".result-popup");
+  const resultContainer = resultPopup ? resultPopup.querySelector(".result-container") : document.querySelector(".result-container");
 
-// ================= Quiz state variables =================
-const QUIZ_TIME_LIMIT = 15;
-let currentTime = QUIZ_TIME_LIMIT;
-let timer = null;
-let quizCategory = "programming";
-let numberOfQuestions = 10;
-let currentQuestion = null;
-const questionsIndexHistory = [];
-let correctAnswersCount = 0;
-let disableSelection = false;
-
-// Questions array (will be loaded from backend)
-let questions = [];
-
-// ================= Backend API URL =================
-// If running locally → use localhost
-// If deployed → use your Render URL
-const API_BASE_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "https://quiz-app-4hsa.onrender.com";
-
-// ✅ Load questions from backend
-const loadQuestions = async () => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/questions`);
-    if (!res.ok) throw new Error("Failed to fetch questions");
-    questions = await res.json();
-    console.log("✅ Questions loaded:", questions);
-  } catch (error) {
-    console.error("❌ Failed to load questions:", error);
-    alert("Unable to load questions. Please try again later.");
+  // Quick sanity check: stop if required elements are missing
+  if (!configContainer || !quizContainer || !answerOptions || !nextQuestionBtn || !timerDisplay || !resultContainer) {
+    console.error("script.js: required DOM elements are missing. Check your quiz.html structure.", {
+      configContainer,
+      quizContainer,
+      answerOptions,
+      nextQuestionBtn,
+      timerDisplay,
+      resultContainer,
+    });
+    return;
   }
-};
 
-// ================= Quiz functions =================
+  // ---------------- Quiz state ----------------
+  const QUIZ_TIME_LIMIT = 15;
+  let currentTime = QUIZ_TIME_LIMIT;
+  let timer = null;
+  let quizCategory = "programming";
+  let numberOfQuestions = 10;
+  let currentQuestion = null;
+  const questionsIndexHistory = [];
+  let correctAnswersCount = 0;
+  let disableSelection = false;
 
-// Display the quiz result
-const showQuizResult = () => {
-  clearInterval(timer);
-  document.querySelector(".quiz-popup").classList.remove("active");
-  document.querySelector(".result-popup").classList.add("active");
-  const resultText = `You answered <b>${correctAnswersCount}</b> out of <b>${numberOfQuestions}</b> questions correctly. Great effort!`;
-  resultContainer.querySelector(".result-message").innerHTML = resultText;
-};
+  // `questions` should be defined in questions.js (global)
+  if (typeof questions === "undefined") {
+    console.warn("script.js: 'questions' is not defined. Make sure questions.js is loaded before script.js.");
+  }
 
-// Reset and start timer
-const resetTimer = () => {
-  clearInterval(timer);
-  currentTime = QUIZ_TIME_LIMIT;
-  timerDisplay.textContent = `${currentTime}s`;
-};
+  // ---------------- Helper functions ----------------
+  const showQuizResult = () => {
+    clearInterval(timer);
+    quizPopup.classList.remove("active");
+    resultPopup.classList.add("active");
+    const resultText = `You answered <b>${correctAnswersCount}</b> out of <b>${numberOfQuestions}</b> questions correctly. Great effort!`;
+    const msgEl = resultContainer.querySelector(".result-message");
+    if (msgEl) msgEl.innerHTML = resultText;
+  };
 
-const startTimer = () => {
-  timer = setInterval(() => {
-    currentTime--;
-    timerDisplay.textContent = `${currentTime}s`;
-    if (currentTime <= 0) {
-      clearInterval(timer);
-      disableSelection = true;
-      nextQuestionBtn.style.visibility = "visible";
-      quizContainer.querySelector(".quiz-timer").style.background = "#c31402";
-      highlightCorrectAnswer();
-      answerOptions
-        .querySelectorAll(".answer-option")
-        .forEach((option) => (option.style.pointerEvents = "none"));
+  const resetTimer = () => {
+    clearInterval(timer);
+    currentTime = QUIZ_TIME_LIMIT;
+    if (timerDisplay) timerDisplay.textContent = `${currentTime}s`;
+  };
+
+  const startTimer = () => {
+    clearInterval(timer);
+    currentTime = QUIZ_TIME_LIMIT;
+    if (timerDisplay) timerDisplay.textContent = `${currentTime}s`;
+    timer = setInterval(() => {
+      currentTime--;
+      if (timerDisplay) timerDisplay.textContent = `${currentTime}s`;
+      if (currentTime <= 0) {
+        clearInterval(timer);
+        disableSelection = true;
+        if (nextQuestionBtn) nextQuestionBtn.style.visibility = "visible";
+        const timerBox = quizContainer.querySelector(".quiz-timer");
+        if (timerBox) timerBox.style.background = "#c31402";
+        highlightCorrectAnswer();
+        answerOptions.querySelectorAll(".answer-option").forEach((option) => (option.style.pointerEvents = "none"));
+      }
+    }, 1000);
+  };
+
+  const getRandomQuestion = () => {
+    const categoryQuestions =
+      (Array.isArray(questions) &&
+        questions.find((cat) => cat.category.toLowerCase() === quizCategory.toLowerCase())?.questions) ||
+      [];
+
+    // If we've shown as many questions as asked OR no questions available -> show result
+    if (questionsIndexHistory.length >= Math.min(numberOfQuestions, categoryQuestions.length) || categoryQuestions.length === 0) {
+      showQuizResult();
+      return null;
     }
-  }, 1000);
-};
 
-// Pick a random question
-const getRandomQuestion = () => {
-  const categoryQuestions =
-    questions.find(
-      (cat) => cat.category.toLowerCase() === quizCategory.toLowerCase()
-    )?.questions || [];
+    const availableIndices = categoryQuestions.map((_, i) => i).filter((i) => !questionsIndexHistory.includes(i));
+    if (availableIndices.length === 0) {
+      showQuizResult();
+      return null;
+    }
 
-  if (questionsIndexHistory.length >= Math.min(numberOfQuestions, categoryQuestions.length)) {
-    return showQuizResult();
-  }
+    const randIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+    questionsIndexHistory.push(randIndex);
+    return categoryQuestions[randIndex];
+  };
 
-  const availableQuestions = categoryQuestions.filter(
-    (_, index) => !questionsIndexHistory.includes(index)
-  );
-  const randomQuestion =
-    availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-  questionsIndexHistory.push(categoryQuestions.indexOf(randomQuestion));
-  return randomQuestion;
-};
+  const highlightCorrectAnswer = () => {
+    if (!currentQuestion) return;
+    const opts = answerOptions.querySelectorAll(".answer-option");
+    const idx = currentQuestion.correctAnswer;
+    if (typeof idx !== "number" || idx < 0 || idx >= opts.length) return;
+    const correctOption = opts[idx];
+    correctOption.classList.add("correct");
+    correctOption.insertAdjacentHTML("beforeend", `<span class="material-symbols-rounded">check_circle</span>`);
+  };
 
-// Highlight correct answer
-const highlightCorrectAnswer = () => {
-  const correctOption =
-    answerOptions.querySelectorAll(".answer-option")[currentQuestion.correctAnswer];
-  correctOption.classList.add("correct");
-  correctOption.insertAdjacentHTML(
-    "beforeend",
-    `<span class="material-symbols-rounded">check_circle</span>`
-  );
-};
+  const handleAnswer = (optionEl, answerIndex) => {
+    if (disableSelection || !currentQuestion) return;
+    clearInterval(timer);
+    disableSelection = true;
 
-// Handle user answer
-const handleAnswer = (option, answerIndex) => {
-  if (disableSelection) return;
-  clearInterval(timer);
-  disableSelection = true;
+    const isCorrect = currentQuestion.correctAnswer === answerIndex;
+    optionEl.classList.add(isCorrect ? "correct" : "incorrect");
+    if (!isCorrect) highlightCorrectAnswer();
+    else correctAnswersCount++;
 
-  const isCorrect = currentQuestion.correctAnswer === answerIndex;
-  option.classList.add(isCorrect ? "correct" : "incorrect");
-  if (!isCorrect) highlightCorrectAnswer();
-  else correctAnswersCount++;
+    optionEl.insertAdjacentHTML("beforeend", `<span class="material-symbols-rounded">${isCorrect ? "check_circle" : "cancel"}</span>`);
+    answerOptions.querySelectorAll(".answer-option").forEach((o) => (o.style.pointerEvents = "none"));
+    if (nextQuestionBtn) nextQuestionBtn.style.visibility = "visible";
+  };
 
-  option.insertAdjacentHTML(
-    "beforeend",
-    `<span class="material-symbols-rounded">${isCorrect ? "check_circle" : "cancel"}</span>`
-  );
+  const renderQuestion = () => {
+    currentQuestion = getRandomQuestion();
+    if (!currentQuestion) return;
 
-  answerOptions
-    .querySelectorAll(".answer-option")
-    .forEach((option) => (option.style.pointerEvents = "none"));
+    disableSelection = false;
+    resetTimer();
+    startTimer();
 
-  nextQuestionBtn.style.visibility = "visible";
-};
+    if (nextQuestionBtn) nextQuestionBtn.style.visibility = "hidden";
+    const timerBox = quizContainer.querySelector(".quiz-timer");
+    if (timerBox) timerBox.style.background = "#32313C";
 
-// Render question
-const renderQuestion = () => {
-  currentQuestion = getRandomQuestion();
-  if (!currentQuestion) return;
+    const qTextEl = quizContainer.querySelector(".question-text");
+    if (qTextEl) qTextEl.textContent = currentQuestion.question;
+    if (questionStatus) questionStatus.innerHTML = `<b>${questionsIndexHistory.length}</b> of <b>${numberOfQuestions}</b> Questions`;
 
-  disableSelection = false;
-  resetTimer();
-  startTimer();
+    answerOptions.innerHTML = "";
+    currentQuestion.options.forEach((opt, i) => {
+      const li = document.createElement("li");
+      li.className = "answer-option";
+      li.textContent = opt;
+      li.addEventListener("click", () => handleAnswer(li, i));
+      answerOptions.appendChild(li);
+    });
+  };
 
-  nextQuestionBtn.style.visibility = "hidden";
-  quizContainer.querySelector(".quiz-timer").style.background = "#32313C";
-  quizContainer.querySelector(".question-text").textContent =
-    currentQuestion.question;
-  questionStatus.innerHTML = `<b>${questionsIndexHistory.length}</b> of <b>${numberOfQuestions}</b> Questions`;
+  const startQuiz = () => {
+    // Hide config and show quiz popup
+    configPopup.classList.remove("active");
+    quizPopup.classList.add("active");
 
-  answerOptions.innerHTML = "";
-  currentQuestion.options.forEach((option, index) => {
-    const li = document.createElement("li");
-    li.classList.add("answer-option");
-    li.textContent = option;
-    answerOptions.append(li);
-    li.addEventListener("click", () => handleAnswer(li, index));
-  });
-};
+    // Read selected category and number
+    const catEl = configContainer.querySelector(".category-option.active");
+    const numEl = configContainer.querySelector(".question-option.active");
+    if (catEl) quizCategory = catEl.textContent.trim().toLowerCase();
+    if (numEl) numberOfQuestions = parseInt(numEl.textContent.trim(), 10) || numberOfQuestions;
 
-// Start quiz
-const startQuiz = async () => {
-  document.querySelector(".config-popup").classList.remove("active");
-  document.querySelector(".quiz-popup").classList.add("active");
+    // reset counters in case of restart
+    correctAnswersCount = 0;
+    questionsIndexHistory.length = 0;
 
-  quizCategory = configContainer.querySelector(".category-option.active").textContent;
-  numberOfQuestions = parseInt(
-    configContainer.querySelector(".question-option.active").textContent
-  );
+    // render first question
+    renderQuestion();
+  };
 
-  if (questions.length === 0) {
-    await loadQuestions();
-  }
+  const resetQuiz = () => {
+    resetTimer();
+    correctAnswersCount = 0;
+    questionsIndexHistory.length = 0;
+    configPopup.classList.add("active");
+    resultPopup.classList.remove("active");
+  };
 
-  renderQuestion();
-};
-
-// Reset quiz
-const resetQuiz = () => {
-  resetTimer();
-  correctAnswersCount = 0;
-  questionsIndexHistory.length = 0;
-  document.querySelector(".config-popup").classList.add("active");
-  document.querySelector(".result-popup").classList.remove("active");
-};
-
-// ================= Event listeners =================
-configContainer
-  .querySelectorAll(".category-option, .question-option")
-  .forEach((option) => {
+  // ---------------- Event listeners ----------------
+  // category / question option toggles
+  configContainer.querySelectorAll(".category-option, .question-option").forEach((option) => {
     option.addEventListener("click", () => {
-      option.parentNode.querySelector(".active").classList.remove("active");
+      const parent = option.parentNode;
+      const active = parent.querySelector(".active");
+      if (active) active.classList.remove("active");
       option.classList.add("active");
     });
   });
 
-nextQuestionBtn.addEventListener("click", renderQuestion);
-resultContainer.querySelector(".try-again-btn").addEventListener("click", resetQuiz);
-configContainer.querySelector(".start-quiz-btn").addEventListener("click", startQuiz);
+  // Next, Try again and Start
+  if (nextQuestionBtn) nextQuestionBtn.addEventListener("click", renderQuestion);
+  const tryAgainBtn = resultContainer.querySelector(".try-again-btn");
+  if (tryAgainBtn) tryAgainBtn.addEventListener("click", resetQuiz);
+
+  const startBtn = document.querySelector(".start-quiz-btn");
+  if (startBtn) {
+    startBtn.addEventListener("click", startQuiz);
+  } else {
+    console.warn("script.js: .start-quiz-btn not found.");
+  }
+
+  console.log("script.js loaded — ready");
+});
